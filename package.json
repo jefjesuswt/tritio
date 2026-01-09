@@ -1,0 +1,22 @@
+{
+  "name": "tritio-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "playground"
+  ],
+  "scripts": {
+    "dev": "bun run --filter playground dev",
+    "build": "bun run --filter ./packages/* build",
+    "test": "bun test",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "bun run build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1",
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}

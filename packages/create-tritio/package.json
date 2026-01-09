@@ -1,0 +1,15 @@
+{
+  "name": "create-tritio",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "create-tritio": "./index.ts"
+  },
+  "dependencies": {
+    "colorette": "^2.0.20",
+    "prompts": "^2.4.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

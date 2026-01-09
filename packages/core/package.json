@@ -1,0 +1,29 @@
+{
+  "name": "tritio",
+  "version": "0.0.1",
+  "description": "The fast, opinionated h3 framework",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun"
+  },
+  "dependencies": {
+    "defu": "^6.1.4",
+    "h3": "^2.0.1-rc.7",
+    "valibot": "^1.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
