@@ -1,6 +1,6 @@
 import { H3, H3Event, serve, getQuery, readBody } from 'h3'
 import { Compile } from 'typebox/compile'
-import { type RouteSchema, type Context, type MiddlewareHandler } from './types'
+import { type RouteSchema, type Context, type MiddlewareHandler, type TritioOptions } from './types'
 import { errorHandler } from './error/handler'
 import { BadRequestException } from './error/http-error'
 import { generateOpenApiSpec } from './docs/openapi'
@@ -20,14 +20,15 @@ export class Tritio {
 
     private prefix: string = '';
 
-    constructor(options: { prefix?: string } = {}) {
+    constructor(options: TritioOptions = {}) {
         this.prefix = options.prefix || '';
         this.h3 = new H3({
-            onError: errorHandler,
-            onRequest: (event) => {
-                // Global CORS handling
-                useCors(event);
-            }
+          onError: errorHandler,
+          onRequest: (event) => {
+            if (options.cors === false) return;
+            const corsConfig = typeof options.cors === 'object' ? options.cors : undefined;
+            useCors(event, corsConfig);
+          }
         })
     }
 
@@ -36,23 +37,15 @@ export class Tritio {
         return this;
     }
 
-    /**
-     * Mounts a sub-application to a specific path prefix.
-     * Delegates runtime handling to h3.mount and aggregates route metadata for docs.
-     */
+
     public mount(prefix: string, app: Tritio) {
-        // 1. Runtime: Delegate to H3 Native Mount
         // @ts-ignore - H3 type definitions might be missing mount in some versions, but it exists at runtime
         this.h3.mount(prefix, app.h3);
 
-        // 2. Metadata: Aggregate routes for OpenAPI/Docs
-        // We iterate over the sub-app routes, prepend the prefix, and add them to our own routes list
         app.routes.forEach(route => {
-            // Cleanly join paths: prefix + route.path
-            // e.g. /api + /users -> /api/users
-            // e.g. /api + / -> /api
+
             const fullPath = this.joinPaths(prefix, route.path);
-            
+
             this.routes.push({
                 ...route,
                 path: fullPath
@@ -62,10 +55,6 @@ export class Tritio {
         return this;
     }
 
-    /**
-     * Creates a route group with a shared prefix.
-     * Uses a temporary sub-app and mounts it.
-     */
     public group(prefix: string, callback: (app: Tritio) => void) {
         const subApp = new Tritio();
         callback(subApp);
@@ -75,10 +64,10 @@ export class Tritio {
 
     private joinPaths(...segments: string[]) {
         return '/' + segments
-            .join('/')
-            .split('/')
-            .filter(Boolean)
-            .join('/');
+          .join('/')
+          .split('/')
+          .filter(Boolean)
+          .join('/');
     }
 
     private register<S extends RouteSchema>(
@@ -87,20 +76,15 @@ export class Tritio {
         schema: S,
         handler: (ctx: Context<S>) => unknown
     ) {
-        // Apply instance prefix if present (e.g. from constructor)
-        // If this app is mounted, the parent handles the mount prefix.
-        // But if this app has a constructor prefix, we treat it as part of the route's relative path.
         const fullPath = this.prefix ? this.joinPaths(this.prefix, path) : path;
 
         this.routes.push({ method, path: fullPath, schema });
         const bodyVal = schema?.body ? Compile(schema.body) : null;
         const queryVal = schema?.query ? Compile(schema.query) : null;
         const paramsVal = schema?.params ? Compile(schema.params) : null;
-        
-        // Only parse body for methods that typically have one
+
         const needsBodyParsing = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !!bodyVal;
 
-        // Context Creator (Sync & Reusable)
         const createContext = (event: H3Event, rawBody: any): Context<S> => ({
             event,
             body: rawBody,
@@ -140,14 +124,11 @@ export class Tritio {
         // -----------------------------
         // SLOW PATH (Async + Middlewares)
         // -----------------------------
-        // -----------------------------
-        // SLOW PATH (Async + Middlewares)
-        // -----------------------------
         if (needsBodyParsing || this.middlewares.length > 0) {
                 this.h3.on(method, fullPath, async (event) => {
                     const rawBody = await readBody(event).catch(() => undefined);
                     const ctx = createContext(event, rawBody);
-                    
+
                     validate(ctx);
 
                     // Middleware Dispatcher (Onion Model)
@@ -163,7 +144,7 @@ export class Tritio {
 
                     return dispatch(0);
                 });
-        } 
+        }
         // -----------------
         // FAST PATH (Sync)
         // -----------------
@@ -171,10 +152,10 @@ export class Tritio {
                 this.h3.on(method, fullPath, (event) => {
                     // Create Context (Sync)
                     const ctx = createContext(event, undefined);
-                    
+
                     // Validate (Sync)
                     validate(ctx);
-                    
+
                     // Execute (Sync)
                     return handler(ctx);
                 });

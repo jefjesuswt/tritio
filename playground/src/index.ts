@@ -1,9 +1,19 @@
 import { Tritio, t } from 'tritio';
 import users from './routes/user-routes';
 
-const app = new Tritio();
+const app = new Tritio({
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    preflight: {
+      statusCode: 204
+    }
+  }
+});
 
-// 1. Test .group()
+
+
 app.group('/api', (api) => {
     api.get('/hello', {
         response: t.String()
