@@ -209,10 +209,10 @@ export class Tritio {
             });
     }
 
-    public get fetch() {
-        return this.h3.fetch;
-    }
-
+    public get fetch(): (request: Request | string, init?: RequestInit) => Promise<Response> {
+            // @ts-ignore - H3 fetch es compatible, pero a veces los tipos de RequestInit de Node vs Web chocan
+            return this.h3.fetch;
+        }
     public listen(port: number, callback?: () => void) {
         serve(this.h3, {
             port,
