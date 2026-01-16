@@ -20,5 +20,9 @@
   },
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun && tsc --emitDeclarationOnly --outDir dist"
+  },
+  "dependencies": {
+    "h3": "^2.0.1-rc.8",
+    "typebox": "^1.0.78"
   }
 }
