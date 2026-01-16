@@ -2,6 +2,7 @@
   "name": "create-tritio",
   "version": "0.0.1",
   "type": "module",
+  "private": true,
   "bin": {
     "create-tritio": "./index.ts"
   },
