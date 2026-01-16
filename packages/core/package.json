@@ -1,6 +1,6 @@
 {
   "name": "tritio",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The fast, opinionated h3 framework",
   "type": "module",
   "main": "./dist/index.js",

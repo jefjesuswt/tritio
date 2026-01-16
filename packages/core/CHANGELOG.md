@@ -1,5 +1,11 @@
 # tritio
 
+## 0.1.2
+
+### Patch Changes
+
+- a8de199: fix(ci): ensure cli is built before publishing
+
 ## 0.1.1
 
 ### Patch Changes
