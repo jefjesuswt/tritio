@@ -1,14 +1,24 @@
 {
   "name": "create-tritio",
-  "version": "0.1.0",
+  "version": "0.0.1",
+  "description": "Scaffolding tool for Tritio applications",
   "type": "module",
-  "private": true,
   "bin": {
-    "create-tritio": "./index.ts"
+    "create-tritio": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "bun run build.ts"
   },
   "dependencies": {
-    "colorette": "^2.0.20",
-    "prompts": "^2.4.2"
+    "citty": "^0.1.6",
+    "consola": "^3.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9"
   },
   "publishConfig": {
     "access": "public"
