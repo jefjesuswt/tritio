@@ -30,8 +30,8 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build Core
-        run: bun run --filter tritio build
+      - name: Build All Packages
+        run: bun run --filter './packages/*' build
 
       - name: Create Release Pull Request or Publish to NPM
         id: changesets

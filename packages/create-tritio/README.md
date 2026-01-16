@@ -1,15 +1,19 @@
 # create-tritio
 
-To install dependencies:
+The easiest way to get started with [Tritio](https://github.com/jefjesuswt/tritio).
+
+## Usage
+
+Run the following command to create a new Tritio project:
 
 ```bash
-bun install
+bun create tritio
 ```
 
-To run:
+Or specify the project name directly:
 
 ```bash
-bun run index.ts
+bun create tritio my-app
 ```
 
-This project was created using `bun init` in bun v1.3.4. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+This will wrap `bun init` to set up a lightweight project structure with TypeScript and Tritio pre-configured, ready for high-performance development.
