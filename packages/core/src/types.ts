@@ -13,7 +13,16 @@ export interface RouteSchema {
     response?: TSchema
 }
 
-export interface Context<S extends RouteSchema> {
+export type AppSchema = {
+    [Path: string]: {
+        [Method: string]: {
+            input: any;
+            output: any;
+        }
+    }
+};
+
+export type Context<S extends RouteSchema, Env = {}> = Env & {
     event: H3Event
     body: S['body'] extends TSchema ? Static<S['body']> : unknown;
     query: S['query'] extends TSchema ? Static<S['query']> : Record<string, string>;
@@ -34,4 +43,4 @@ export interface CorsOptions {
 
 export type Next = () => Promise<void>;
 
-export type MiddlewareHandler = (ctx: Context<any>, next: Next) => Promise<void> | void;
+export type MiddlewareHandler<Env = {}> = (ctx: Context<any, Env>, next: Next) => Promise<void> | void;

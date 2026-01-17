@@ -8,9 +8,9 @@ import { generateScalarHtml } from './docs/scalar'
 import { type HTTPMethod } from './http/methods'
 import { useCors } from './http/cors'
 
-export class Tritio {
+export class Tritio<Env = {}> {
     private h3: H3;
-    private middlewares: MiddlewareHandler[] = [];
+    private middlewares: MiddlewareHandler<Env>[] = [];
 
     private routes: Array<{
         method: string;
@@ -32,14 +32,32 @@ export class Tritio {
         })
     }
 
-    public use(handler: MiddlewareHandler) {
+    public use(handler: MiddlewareHandler<Env>) {
         this.middlewares.push(handler);
         return this;
     }
 
+    public derive<NewContext>(
+        fn: (ctx: Context<any, Env>) => NewContext | Promise<NewContext>
+    ): Tritio<Env & NewContext> {
+        this.use(async (ctx, next) => {
+            const derived = await fn(ctx);
+            Object.assign(ctx, derived);
+            Object.assign(ctx.event.context, derived);
+            await next();
+        });
+
+        return this as unknown as Tritio<Env & NewContext>;
+    }
+
+    public request(path: string, options: RequestInit = {}): Promise<Response> {
+        const url = path.startsWith('http') ? path : `http://localhost:3000/${path}`
+        const req = new Request(url, options)
+
+        return this.fetch(req);
+    }
 
     public mount(prefix: string, app: Tritio) {
-        // @ts-ignore - H3 type definitions might be missing mount in some versions, but it exists at runtime
         this.h3.mount(prefix, app.h3);
 
         app.routes.forEach(route => {
@@ -74,7 +92,7 @@ export class Tritio {
         method: HTTPMethod,
         path: string,
         schema: S,
-        handler: (ctx: Context<S>) => unknown
+        handler: (ctx: Context<S, Env>) => unknown
     ) {
         const fullPath = this.prefix ? this.joinPaths(this.prefix, path) : path;
 
@@ -85,31 +103,30 @@ export class Tritio {
 
         const needsBodyParsing = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !!bodyVal;
 
-        const createContext = (event: H3Event, rawBody: any): Context<S> => ({
-            event,
-            body: rawBody,
-            get query() {
-                // @ts-ignore
-                if (!this._query) {
-                        // @ts-ignore
-                    this._query = getQuery(event);
+        const createContext = (event: H3Event, rawBody: any): Context<S, Env> => {
+
+            const ctx: any = {
+                event,
+                body: rawBody,
+                get query() {
+                    if (!this._query) {
+                        this._query = getQuery(event);
+                    }
+                    return this._query;
+                },
+                get params() {
+                    if (!this._params) {
+                        this._params = event.context.params || {};
+                    }
+                    return this._params;
                 }
-                // @ts-ignore
-                return this._query;
-            },
-            get params() {
-                // @ts-ignore
-                if (!this._params) {
-                        // @ts-ignore
-                    this._params = event.context.params || {};
-                }
-                // @ts-ignore
-                return this._params;
             }
-        });
+            Object.assign(ctx, event.context);
+            return ctx;
+        };
 
         // Validator (Sync & Reusable)
-        const validate = (ctx: Context<S>) => {
+        const validate = (ctx: Context<S, Env>) => {
             if (paramsVal && !paramsVal.Check(ctx.params)) {
                 throw new BadRequestException({ message: "Invalid params", cause: [...paramsVal.Errors(ctx.params)] });
             }
@@ -121,75 +138,60 @@ export class Tritio {
             }
         };
 
-        // -----------------------------
-        // SLOW PATH (Async + Middlewares)
-        // -----------------------------
+
         if (needsBodyParsing || this.middlewares.length > 0) {
-                this.h3.on(method, fullPath, async (event) => {
-                    const rawBody = await readBody(event).catch(() => undefined);
-                    const ctx = createContext(event, rawBody);
-
-                    validate(ctx);
-
-                    // Middleware Dispatcher (Onion Model)
-                    const dispatch = async (index: number): Promise<any> => {
-                        if (index < this.middlewares.length) {
-                            const middleware = this.middlewares[index];
-                            if (middleware) {
-                                return middleware(ctx, () => dispatch(index + 1));
-                            }
-                        }
-                        return handler(ctx);
-                    };
-
-                    return dispatch(0);
-                });
-        }
-        // -----------------
-        // FAST PATH (Sync)
-        // -----------------
-        else {
-                this.h3.on(method, fullPath, (event) => {
-                    // Create Context (Sync)
-                    const ctx = createContext(event, undefined);
-
-                    // Validate (Sync)
-                    validate(ctx);
-
-                    // Execute (Sync)
+            this.h3.on(method, fullPath, async (event) => {
+                const rawBody = await readBody(event).catch(() => undefined);
+                const ctx = createContext(event, rawBody)
+                
+                validate(ctx)
+                const dispatch = async (index: number): Promise<any> => {
+                    if (index < this.middlewares.length) {
+                        const middleware = this.middlewares[index];
+                        return middleware(ctx, () => dispatch(index + 1));
+                    }
                     return handler(ctx);
-                });
+                }
+                return dispatch(0);
+            });
+        } else {
+            this.h3.on(method, fullPath, (event) => {
+                const ctx = createContext(event, undefined);
+                validate(ctx);
+                return handler(ctx);
+            });
         }
+
 
         return this;
     }
 
     // HTTP Methods
-    public get<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S>) => any) {
+    public get<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S, Env>) => any) {
         return this.register('GET', path, schema, handler)
     }
 
-    public post<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S>) => any) {
+    public post<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S, Env>) => any) {
         return this.register('POST', path, schema, handler)
     }
 
-    public put<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S>) => any) {
+    public put<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S, Env>) => any) {
         return this.register('PUT', path, schema, handler)
     }
 
-    public delete<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S>) => any) {
+    public delete<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S, Env>) => any) {
         return this.register('DELETE', path, schema, handler)
     }
 
-    public patch<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S>) => any) {
+    public patch<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S, Env>) => any) {
         return this.register('PATCH', path, schema, handler)
     }
 
-    public head<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S>) => any) {
+    public head<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S, Env>) => any) {
         return this.register('HEAD', path, schema, handler)
     }
 
-    public options<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S>) => any) {
+    public options<S extends RouteSchema>(path: string, schema: S, handler: (c: Context<S, Env>) => any) {
         return this.register('OPTIONS', path, schema, handler)
     }
 
