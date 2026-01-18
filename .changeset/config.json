@@ -3,9 +3,13 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [["tritio", "@tritio/client", "@tritio/cors", "@tritio/docs", "create-tritio"]],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
-  "ignore": ["tritio-playground"]
+  "updateInternalDependencies": "minor",
+  "ignore": ["tritio-playground"],
+
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

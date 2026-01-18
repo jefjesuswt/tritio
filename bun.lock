@@ -17,11 +17,11 @@
     },
     "packages/client": {
       "name": "@tritio/client",
-      "version": "0.1.0",
+      "version": "0.3.0",
     },
     "packages/core": {
       "name": "tritio",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "consola": "^3.4.2",
         "h3": "^2.0.1-rc.8",
@@ -34,7 +34,7 @@
     },
     "packages/cors": {
       "name": "@tritio/cors",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "dependencies": {
         "h3": "^2.0.1-rc.8",
       },
@@ -49,7 +49,7 @@
     },
     "packages/create-tritio": {
       "name": "create-tritio",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "bin": {
         "create-tritio": "./dist/index.js",
       },
@@ -63,7 +63,7 @@
     },
     "packages/docs": {
       "name": "@tritio/docs",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "devDependencies": {
         "@types/node": "^20.0.0",
         "tritio": "workspace:*",
