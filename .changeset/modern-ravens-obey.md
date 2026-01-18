@@ -6,7 +6,7 @@
 'create-tritio': minor
 ---
 
-refactor(core): 💥 Complete re-architecture to Lifecycle & Plugin system.
+refactor(core): Complete re-architecture to Lifecycle & Plugin system.
 
 - **Breaking Change**: Removed built-in `.docs()` method. Use `@tritio/docs` plugin instead.
 - **Breaking Change**: Removed `cors` option from constructor. Use `@tritio/cors` plugin instead.

@@ -13,7 +13,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --filter playground dev",
-    "build": "bun run --filter './packages/*' build",
+    "build": "bun run --filter tritio build && bun run --filter '*' --filter '!tritio' build",
     "test": "bun test",
     "changeset": "changeset",
     "version-packages": "changeset version",
