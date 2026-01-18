@@ -31,15 +31,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build All Packages
-        run: bun run --filter './packages/*' build
+        run: bun run build
 
       - name: Create Release Pull Request or Publish to NPM
         id: changesets
         uses: changesets/action@v1
         with:
           publish: bun changeset publish
-          commit: "chore: version packages"
-          title: "chore: version packages"
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
           createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
