@@ -2,58 +2,122 @@ import { H3, serve } from 'h3';
 import {
   type RouteSchema,
   type Context,
-  type MiddlewareHandler,
   type TritioOptions,
+  ContextHook,
+  GlobalHook,
+  GenericContext,
+  MountedAppType,
 } from './types';
-import { generateOpenApiSpec } from './docs/openapi';
-import { generateScalarHtml } from './docs/scalar';
 import { type HTTPMethod } from './http/methods';
-import { useCors } from './http/cors';
 import { Static, TSchema } from 'typebox';
-import { errorHandler } from './http/errors';
 import { ExecutionPipeline } from './core/pipeline';
+import { printRoutes, printStartup } from './logger';
+import { LifecycleManager } from './core/lifecycle';
+import { RouteRegistry } from './core/registry';
 
 export class Tritio<Env = Record<string, unknown>, Schema = {}> {
   public readonly _schema!: Schema;
-  private h3: H3;
-  private middlewares: MiddlewareHandler<Env>[] = [];
 
-  private routes: Array<{
-    method: HTTPMethod;
-    path: string;
-    schema: RouteSchema;
-  }> = [];
+  public h3: H3;
+  public lifecycle: LifecycleManager<Env>;
 
-  private prefix: string = '';
+  private registry: RouteRegistry;
+  private prefix: string;
 
   constructor(options: TritioOptions = {}) {
     this.prefix = options.prefix || '';
+    this.lifecycle = new LifecycleManager<Env>();
+    this.registry = new RouteRegistry();
+
     this.h3 = new H3({
-      onError: errorHandler,
-      onRequest: (event) => {
-        if (options.cors === false) return;
-        const corsConfig = typeof options.cors === 'object' ? options.cors : undefined;
-        useCors(event, corsConfig);
-      },
+      onError: (err, event) => this.lifecycle.runOnError(err, event),
+      onRequest: (event) => this.lifecycle.runOnRequest(event),
+      onResponse: (res, event) => this.lifecycle.runOnResponse(res, event),
     });
   }
 
-  public use(handler: MiddlewareHandler<Env>) {
-    this.middlewares.push(handler);
+  public get routes() {
+    return this.registry.getAll();
+  }
+
+  public use<NewEnv = Env>(
+    plugin: (app: Tritio<Env, Schema>) => Tritio<NewEnv, Schema>
+  ): Tritio<NewEnv, Schema> {
+    plugin(this);
+    return this as unknown as Tritio<NewEnv, Schema>;
+  }
+
+  public derive<Derived extends Record<string, any>>(
+    fn: (ctx: GenericContext<Env>) => Derived | Promise<Derived>
+  ): Tritio<Env & Derived, Schema> {
+    this.lifecycle.addTransform(fn);
+    return this as unknown as Tritio<Env & Derived, Schema>;
+  }
+
+  public onBeforeHandle(fn: ContextHook<Env>) {
+    this.lifecycle.addBeforeHandle(fn);
     return this;
   }
 
-  public derive<NewContext>(
-    fn: (ctx: Context<RouteSchema, Env>) => NewContext | Promise<NewContext>
-  ): Tritio<Env & NewContext, Schema> {
-    this.use(async (ctx, next) => {
-      const derived = await fn(ctx as Context<RouteSchema, Env>);
-      Object.assign(ctx, derived);
-      Object.assign(ctx.event.context, derived);
-      await next();
-    });
+  public onAfterHandle(fn: ContextHook<Env>) {
+    this.lifecycle.addAfterHandle(fn);
+    return this;
+  }
 
-    return this as unknown as Tritio<Env & NewContext, Schema>;
+  public onRequest(fn: GlobalHook) {
+    this.lifecycle.addRequest(fn);
+    return this;
+  }
+
+  // HTTP Methods
+  public get<P extends string, S extends RouteSchema>(
+    path: P,
+    schema: S,
+    h: (c: Context<S, Env>) => unknown
+  ) {
+    return this.register('GET', path, schema, h);
+  }
+  public post<P extends string, S extends RouteSchema>(
+    path: P,
+    schema: S,
+    h: (c: Context<S, Env>) => unknown
+  ) {
+    return this.register('POST', path, schema, h);
+  }
+  public put<P extends string, S extends RouteSchema>(
+    path: P,
+    schema: S,
+    h: (c: Context<S, Env>) => unknown
+  ) {
+    return this.register('PUT', path, schema, h);
+  }
+  public delete<P extends string, S extends RouteSchema>(
+    path: P,
+    schema: S,
+    h: (c: Context<S, Env>) => unknown
+  ) {
+    return this.register('DELETE', path, schema, h);
+  }
+  public patch<P extends string, S extends RouteSchema>(
+    path: P,
+    schema: S,
+    h: (c: Context<S, Env>) => unknown
+  ) {
+    return this.register('PATCH', path, schema, h);
+  }
+  public head<P extends string, S extends RouteSchema>(
+    path: P,
+    schema: S,
+    h: (c: Context<S, Env>) => unknown
+  ) {
+    return this.register('HEAD', path, schema, h);
+  }
+  public options<P extends string, S extends RouteSchema>(
+    path: P,
+    schema: S,
+    h: (c: Context<S, Env>) => unknown
+  ) {
+    return this.register('OPTIONS', path, schema, h);
   }
 
   private register<S extends RouteSchema, Path extends string, Method extends HTTPMethod>(
@@ -61,23 +125,11 @@ export class Tritio<Env = Record<string, unknown>, Schema = {}> {
     path: Path,
     schema: S,
     handler: (ctx: Context<S, Env>) => unknown
-  ): Tritio<
-    Env,
-    Schema & {
-      [K in Path]: {
-        [M in Lowercase<Method>]: {
-          input: S['body'] extends TSchema ? Static<S['body']> : undefined;
-          output: S['response'] extends TSchema ? Static<S['response']> : unknown;
-        };
-      };
-    }
-  > {
-    const fullPath = this.prefix ? this.joinPaths(this.prefix, path) : path;
+  ) {
+    const fullPath = this.joinPaths(this.prefix, path);
+    this.registry.add(method, fullPath, schema);
 
-    this.routes.push({ method, path: fullPath, schema });
-
-    const h3Handler = ExecutionPipeline.build(schema, this.middlewares, handler, method);
-
+    const h3Handler = ExecutionPipeline.build(schema, this.lifecycle, handler, method);
     this.h3.on(method, fullPath, h3Handler);
 
     return this as unknown as Tritio<
@@ -93,95 +145,18 @@ export class Tritio<Env = Record<string, unknown>, Schema = {}> {
     >;
   }
 
-  // HTTP Methods
-  public get<Path extends string, S extends RouteSchema>(
-    path: Path,
-    schema: S,
-    handler: (c: Context<S, Env>) => unknown
-  ) {
-    return this.register('GET', path, schema, handler);
-  }
-
-  public post<Path extends string, S extends RouteSchema>(
-    path: Path,
-    schema: S,
-    handler: (c: Context<S, Env>) => unknown
-  ) {
-    return this.register('POST', path, schema, handler);
-  }
-
-  public put<Path extends string, S extends RouteSchema>(
-    path: Path,
-    schema: S,
-    handler: (c: Context<S, Env>) => unknown
-  ) {
-    return this.register('PUT', path, schema, handler);
-  }
-
-  public delete<Path extends string, S extends RouteSchema>(
-    path: Path,
-    schema: S,
-    handler: (c: Context<S, Env>) => unknown
-  ) {
-    return this.register('DELETE', path, schema, handler);
-  }
-
-  public patch<Path extends string, S extends RouteSchema>(
-    path: Path,
-    schema: S,
-    handler: (c: Context<S, Env>) => unknown
-  ) {
-    return this.register('PATCH', path, schema, handler);
-  }
-
-  public head<Path extends string, S extends RouteSchema>(
-    path: Path,
-    schema: S,
-    handler: (c: Context<S, Env>) => unknown
-  ) {
-    return this.register('HEAD', path, schema, handler);
-  }
-
-  public options<Path extends string, S extends RouteSchema>(
-    path: Path,
-    schema: S,
-    handler: (c: Context<S, Env>) => unknown
-  ) {
-    return this.register('OPTIONS', path, schema, handler);
-  }
-
-  public docs(path: string = '/docs') {
-    this.h3.on('GET', `${path}/json`, () => generateOpenApiSpec(this.routes));
-    this.h3.on('GET', path, () => {
-      const html = generateScalarHtml(`${path}/json`);
-      return new Response(html, { headers: { 'Content-Type': 'text/html' } });
-    });
-  }
-
   public mount<P extends string, SubSchema>(
     prefix: P,
     app: Tritio<any, SubSchema>
-  ): Tritio<
-    Env,
-    Schema & {
-      [K in keyof SubSchema as string extends K
-        ? never
-        : K extends string
-          ? `${P}${K}`
-          : never]: SubSchema[K];
-    }
-  > {
+  ): MountedAppType<Env, Schema, SubSchema, P> {
     this.h3.mount(prefix, app.h3);
 
     app.routes.forEach((route) => {
       const fullPath = this.joinPaths(prefix, route.path);
-      this.routes.push({
-        ...route,
-        path: fullPath,
-      });
+      this.registry.add(route.method, fullPath, route.schema);
     });
 
-    return this as any;
+    return this as unknown as MountedAppType<Env, Schema, SubSchema, P>;
   }
 
   public group(prefix: string, callback: (app: Tritio<Env>) => void) {
@@ -211,9 +186,13 @@ export class Tritio<Env = Record<string, unknown>, Schema = {}> {
   }
 
   public listen(port: number, callback?: () => void) {
+    printRoutes(this.registry.getAll());
+
     serve(this.h3, {
       port,
+      silent: true,
     });
+    printStartup(port).catch(() => {});
     if (callback) callback();
   }
 }

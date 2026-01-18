@@ -1,7 +1,7 @@
 {
-  "name": "tritio",
-  "version": "0.2.0",
-  "description": "The fast, opinionated h3 framework",
+  "name": "@tritio/docs",
+  "version": "0.1.0",
+  "description": "OpenAPI and Scalar generator for Tritio",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -21,13 +21,13 @@
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun && tsc --emitDeclarationOnly --outDir dist"
   },
-  "dependencies": {
-    "consola": "^3.4.2",
-    "h3": "^2.0.1-rc.8",
-    "picocolors": "^1.1.1",
+  "peerDependencies": {
+    "tritio": "workspace:*",
     "typebox": "^1.0.78"
   },
   "devDependencies": {
-    "@types/node": "^25.0.9"
+    "@types/node": "^20.0.0",
+    "tritio": "workspace:*",
+    "typescript": "^5.0.0"
   }
 }

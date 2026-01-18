@@ -28,8 +28,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "tritio": ["../packages/core/src/index.ts"],
-      "tritio-client": ["../packages/client/src/index.ts"]
+      // "tritio": ["../packages/core/src/index.ts"],
+      // "@tritio/cors": ["../packages/cors/src/index.ts"],
+      // "@tritio/docs": ["../packages/docs/src/index.ts"],
+      // "@tritio/client": ["../packages/client/src/index.ts"]
     }
   }
 }

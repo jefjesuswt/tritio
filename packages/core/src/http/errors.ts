@@ -6,16 +6,27 @@ export interface HTTPErrorOptions {
   cause?: unknown;
 }
 
-export class HTTPError extends Error {
+export class HTTPError extends H3Error {
   readonly status: number;
+  override statusText: string;
   readonly res?: Response;
-  override readonly cause?: unknown;
+  override cause: unknown;
 
   constructor(status: number, options?: HTTPErrorOptions) {
-    super(options?.message);
+    super(options?.message || 'HTTP Error');
     this.status = status;
     this.res = options?.res;
     this.cause = options?.cause;
+
+    this.statusText = HTTPError.getStatusText(status);
+  }
+
+  override get statusCode(): number {
+    return this.status;
+  }
+
+  override get statusMessage(): string {
+    return this.statusText;
   }
 
   getResponse(): Response {
@@ -36,8 +47,8 @@ export class HTTPError extends Error {
     );
   }
 
-  private get statusText(): string {
-    switch (this.status) {
+  private static getStatusText(status: number): string {
+    switch (status) {
       case 400:
         return 'Bad Request';
       case 401:
@@ -201,7 +212,6 @@ export const errorHandler = (error: H3Error | HTTPError) => {
     return error.getResponse();
   }
 
-  // Fallback for other errors
   const status = error.status || (error as unknown as { status: number }).status || 500;
   const message = error.statusText || error.message || 'Internal Server Error';
 

@@ -4,7 +4,6 @@ export * from './types';
 export * from './tritio';
 export * from './validation';
 export * from './core';
-export * from './docs';
 export * from './http';
 
 export type InferApp<T> = T extends Tritio<any, infer S> ? S : never;

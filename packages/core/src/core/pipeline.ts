@@ -1,13 +1,14 @@
 import { EventHandlerResponse, H3Event, readBody } from 'h3';
 import { HTTPMethod } from '../http';
-import { Context, MiddlewareHandler, RouteSchema } from '../types';
+import { Context, RouteSchema } from '../types';
 import { SchemaValidator } from '../validation/compiler';
 import { ContextFactory } from './context';
+import { LifecycleManager } from './lifecycle';
 
 export class ExecutionPipeline {
   static build<S extends RouteSchema, Env>(
     schema: S,
-    middlewares: MiddlewareHandler<Env>[],
+    lifecycle: LifecycleManager<Env>,
     handler: (ctx: Context<S, Env>) => unknown,
     method: HTTPMethod
   ) {
@@ -25,23 +26,28 @@ export class ExecutionPipeline {
 
       const ctx = ContextFactory.create<S, Env>(event, rawBody);
 
+      for (const hook of lifecycle.onTransformHooks) {
+        const derived = await hook(ctx as any);
+        if (derived) {
+          Object.assign(ctx, derived);
+          Object.assign(ctx.event.context, derived);
+        }
+      }
+
       validator.validate(ctx);
 
-      const dispatch = async (index: number): Promise<unknown> => {
-        if (index < middlewares.length) {
-          const middleware = middlewares[index];
+      for (const hook of lifecycle.onBeforeHandleHooks) {
+        const result = await hook(ctx as any);
+        if (result) return result;
+      }
 
-          if (middleware) {
-            let nextResult: unknown;
-            await middleware(ctx, async () => {
-              nextResult = await dispatch(index + 1);
-            });
-            return nextResult;
-          }
-        }
-        return handler(ctx);
-      };
-      return dispatch(0);
+      const response = await handler(ctx);
+
+      for (const hook of lifecycle.onAfterHandleHooks) {
+        await hook(ctx as any);
+      }
+
+      return response;
     };
   }
 }

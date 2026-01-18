@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "tritio": "workspace:*",
-    "@tritio/client": "workspace:*"
+    "@tritio/client": "workspace:*",
+    "@tritio/cors": "workspace:*",
+    "@tritio/docs": "workspace:*"
   }
 }
