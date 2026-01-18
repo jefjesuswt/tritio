@@ -8,7 +8,8 @@
     "build": "bun build src/index.ts --outdir dist --target bun"
   },
   "dependencies": {
-    "tritio": "latest" 
+    "tritio": "latest",
+    "@tritio/client": "latest"
   },
   "devDependencies": {
     "@types/bun": "latest"

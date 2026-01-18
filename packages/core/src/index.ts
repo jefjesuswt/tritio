@@ -1,7 +1,10 @@
-export * from './schema';
+import { Tritio } from './tritio';
+
 export * from './types';
 export * from './tritio';
-export * from './error/http-error';
-export * from './error/handler';
+export * from './validation';
+export * from './core';
 export * from './docs';
 export * from './http';
+
+export type InferApp<T> = T extends Tritio<any, infer S> ? S : never;

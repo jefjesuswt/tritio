@@ -1,48 +1,104 @@
-import { Tritio, t } from 'tritio';
-import users from './routes/user-routes';
+import { Tritio, t, type InferApp } from 'tritio';
+import { createClient } from 'tritio-client';
 
 const app = new Tritio({
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-    allowHeaders: ['Content-Type', 'Authorization'],
-    preflight: {
-      statusCode: 204
+  cors: true,
+});
+
+const appWithContext = app.derive((ctx) => {
+  const authHeader = ctx.event.runtime?.node?.req.headers['authorization'];
+  return {
+    user: {
+      id: 1,
+      role: authHeader === 'Bearer admin' ? 'admin' : 'guest',
+    },
+    timestamp: Date.now(),
+  };
+});
+
+const routeApp = appWithContext
+  .get(
+    '/hello',
+    {
+      response: t.Object({ message: t.String() }),
+    },
+    () => {
+      return { message: 'Hello from Tritio V1' };
     }
-  }
-});
+  )
+  .post(
+    '/echo',
+    {
+      body: t.Object({ text: t.String() }),
+      response: t.Object({ original: t.String(), length: t.Numeric() }),
+    },
+    (c) => {
+      return {
+        original: c.body.text,
+        length: c.body.text.length,
+      };
+    }
+  )
+  .get(
+    '/whoami',
+    {
+      response: t.Object({
+        userId: t.Numeric(),
+        role: t.String(),
+        ts: t.Numeric(),
+      }),
+    },
+    (c) => {
+      return {
+        userId: c.user.id,
+        role: c.user.role,
+        ts: c.timestamp,
+      };
+    }
+  );
 
+const authApp = new Tritio().post(
+  '/login',
+  {
+    body: t.Object({ username: t.String(), password: t.String() }),
+    response: t.Object({ token: t.String() }),
+  },
+  (c) => ({ token: c.body.username })
+);
 
+const fullApp = routeApp.mount('/auth', authApp);
 
-app.group('/api', (api) => {
-    api.get('/hello', {
-        response: t.String()
-    }, () => 'Hello from API');
+fullApp.docs();
 
-    api.group('/v1', (v1) => {
-        v1.get('/user', {
-            response: t.Object({ id: t.Number(), name: t.String() })
-        }, () => ({ id: 1, name: 'Alice' }));
+type AppType = InferApp<typeof fullApp>;
+
+const PORT = 3045;
+console.log(`🚀 Server running on http://localhost:${PORT}`);
+fullApp.listen(PORT);
+
+const testClient = async () => {
+  console.log('\n--- Client Test Starting (Simulation) ---');
+
+  const client = createClient<AppType>(`http://localhost:${PORT}`);
+
+  try {
+    const hello = await client.hello.get();
+    console.log('✅ client.hello.get() =>', hello);
+
+    const echo = await client.echo.post({ text: 'Tritio Rocks' });
+    console.log('✅ client.echo.post() =>', echo);
+
+    const login = await client.auth.login.post({
+      username: 'jeff',
+      password: '123',
     });
-});
+    console.log('✅ client.auth.login.post() =>', login);
 
-// 2. Test .mount() with Constructor Prefix
-const authApp = new Tritio({ prefix: '/auth' });
-authApp.post('/login', {
-    body: t.Object({ username: t.String() })
-}, (c) => `Logged in as ${c.body.username}`);
+    const who = await client.whoami.get();
+    console.log('✅ client.whoami.get() =>', who);
+  } catch (err) {
+    console.error('❌ Client Test Failed:', err);
+  }
+};
 
-// Mount authApp at /v2 (it has its own prefix /auth)
-app.mount('/v2', authApp);
-
-// 3. Test .mount() with explicit prefix
-const adminApp = new Tritio();
-adminApp.get('/dashboard', {}, () => 'Admin Dashboard');
-
-app.mount('/admin', adminApp);
-app.mount('/users', users);
-
-// 4. Docs
-app.docs();
-
-app.listen(3000);
+setTimeout(testClient, 1000);

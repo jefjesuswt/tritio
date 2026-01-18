@@ -2,8 +2,13 @@
   "name": "tritio-monorepo",
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
+    "@eslint/js": "^9.39.2",
     "@types/bun": "latest",
-    "typescript": "^5.0.0"
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.0",
+    "typescript": "^5.0.0",
+    "typescript-eslint": "^8.53.0"
   },
   "private": true,
   "scripts": {
