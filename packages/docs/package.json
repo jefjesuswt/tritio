@@ -1,6 +1,6 @@
 {
   "name": "@tritio/docs",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "OpenAPI and Scalar generator for Tritio",
   "type": "module",
   "main": "./dist/index.js",

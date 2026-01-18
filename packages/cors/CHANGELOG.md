@@ -1,6 +1,6 @@
-# create-tritio
+# @tritio/cors
 
-## 0.3.0
+## 1.0.0
 
 ### Minor Changes
 
@@ -26,29 +26,7 @@
   fix(client): Synced type inference with Core v0.3.0 changes.
   fix(cli): Updated scaffolding templates to use the new Plugin Architecture.
 
-## 0.2.0
-
-### Minor Changes
-
-- ae0e151: feat(core): Added .derive() for context injection and .request() for internal testing.
-  feat(core): Implemented full End-to-End Type Inference engine.
-  feat(client): Initial release of @tritio/client with recursive type safety.
-  fix(cli): Updated scaffolding to use the new @tritio/client package.
-
-## 0.1.1
-
 ### Patch Changes
 
-- a8de199: fix(ci): ensure cli is built before publishing
-
-## 0.1.0
-
-### Minor Changes
-
-- d17981d: fix(core): correct entrypoint extension & feat(cli): rewrite with citty/consola
-
-## 0.1.0
-
-### Minor Changes
-
-- dad8361: "ci: setup github actions release workflow"
+- Updated dependencies [bc4fd41]
+  - tritio@0.3.0
