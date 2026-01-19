@@ -1,5 +1,5 @@
 import { EventHandlerResponse, H3Event, readBody } from 'h3';
-import { HTTPMethod } from '../http';
+import { BadRequestException, HTTPMethod } from '../http';
 import { Context, RouteSchema } from '../types';
 import { SchemaValidator } from '../validation/compiler';
 import { ContextFactory } from './context';
@@ -14,14 +14,19 @@ export class ExecutionPipeline {
   ) {
     const validator = new SchemaValidator(schema);
 
-    const needsBodyParsing =
-      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && (validator.hasBodyValidator() || true);
+    const needsBodyParsing = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
 
     return async (event: H3Event): Promise<EventHandlerResponse> => {
       let rawBody: unknown = undefined;
 
       if (needsBodyParsing) {
-        rawBody = await readBody(event).catch(() => undefined);
+        try {
+          rawBody = await readBody(event);
+        } catch (err) {
+          if (event.req.headers.get('content-type')?.includes('application/json')) {
+            throw new BadRequestException({ message: 'Invalid JSON Body', cause: err });
+          }
+        }
       }
 
       const ctx = ContextFactory.create<S, Env>(event, rawBody);

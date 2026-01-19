@@ -6,6 +6,10 @@ export interface TritioOptions {
   prefix?: string;
 }
 
+export interface TritioApp {
+  fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+}
+
 export interface RouteSchema {
   body?: TSchema;
   query?: TSchema;

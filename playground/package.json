@@ -13,6 +13,9 @@
     "tritio": "workspace:*",
     "@tritio/client": "workspace:*",
     "@tritio/cors": "workspace:*",
-    "@tritio/docs": "workspace:*"
+    "@tritio/docs": "workspace:*",
+    "@tritio/rate-limit": "workspace:*",
+    "@tritio/jwt": "workspace:*",
+    "@tritio/auth": "workspace:*"
   }
 }

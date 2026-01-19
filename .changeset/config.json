@@ -3,7 +3,19 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [["tritio", "@tritio/client", "@tritio/cors", "@tritio/docs", "create-tritio"]],
+  "linked": [
+    [
+      "tritio",
+      "@tritio/client",
+      "@tritio/cors",
+      "@tritio/docs",
+      "@tritio/jwt",
+      "@tritio/auth",
+      "@tritio/rate-limit",
+      "@tritio/testing",
+      "create-tritio"
+    ]
+  ],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "minor",

@@ -1,7 +1,7 @@
 {
-  "name": "tritio",
-  "version": "0.3.0",
-  "description": "The fast, opinionated h3 framework",
+  "name": "@tritio/testing",
+  "version": "0.1.0",
+  "description": "Testing utilities for Tritio",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -12,23 +12,14 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "tritio": "workspace:*"
   },
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target bun && tsc --emitDeclarationOnly --outDir dist"
   },
-  "dependencies": {
-    "consola": "^3.4.2",
-    "h3": "^2.0.1-rc.8",
-    "picocolors": "^1.1.1",
-    "typebox": "^1.0.78"
-  },
   "devDependencies": {
-    "@tritio/testing": "workspace:*",
-    "@types/node": "^25.0.9"
+    "tritio": "workspace:*",
+    "typescript": "^5.0.0"
   }
 }
