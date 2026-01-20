@@ -1,6 +1,18 @@
 import { Tritio } from './tritio';
 
-export * from './types';
+export {
+  type Context,
+  type GenericContext,
+  type RouteSchema,
+  type TritioOptions,
+  type TritioPlugin,
+  type GlobalHook,
+  type ErrorHook,
+  type ContextHook,
+  type TransformHook,
+  asPlugin,
+} from './types.js';
+
 export * from './tritio';
 export * from './validation';
 export * from './core';

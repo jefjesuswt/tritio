@@ -1,4 +1,4 @@
-import { type TritioPlugin } from 'tritio';
+import { type Tritio } from 'tritio';
 import { getRequestIP, type H3Event } from 'h3';
 import { TooManyRequestsException } from 'tritio';
 
@@ -117,7 +117,8 @@ export interface RateLimitOptions {
   onLimitReached?: (event: H3Event, key: string) => void | Promise<void>;
 }
 
-export const rateLimit = (options: RateLimitOptions = {}): TritioPlugin => {
+// Rate limit plugin - no modifica el contexto
+export const rateLimit = (options: RateLimitOptions = {}) => {
   const windowMs = options.windowMs ?? 60 * 1000;
   const max = options.max ?? 100;
   const message = options.message ?? { error: 'Too Many Requests' };
@@ -131,7 +132,8 @@ export const rateLimit = (options: RateLimitOptions = {}): TritioPlugin => {
 
   const store = options.store ?? new MemoryStore(windowMs);
 
-  return (app) => {
+  // CRITICAL: Tipo de retorno explícito (sin cambios en Env)
+  return <Env, Schema>(app: Tritio<Env, Schema>): Tritio<Env, Schema> => {
     const requestKeys = new WeakMap<H3Event, string>();
 
     app.onRequest(async (event: H3Event) => {

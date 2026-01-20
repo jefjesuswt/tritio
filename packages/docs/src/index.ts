@@ -1,4 +1,4 @@
-import { TritioPlugin } from 'tritio';
+import { type Tritio } from 'tritio';
 import { generateOpenApiSpec } from './openapi';
 import { generateScalarHtml } from './scalar';
 
@@ -8,12 +8,10 @@ export interface DocsOptions {
   version?: string;
 }
 
-export const docs =
-  (options: DocsOptions = {}): TritioPlugin =>
-  (app) => {
+export const docs = (options: DocsOptions = {}) => {
+  return <Env, Schema>(app: Tritio<Env, Schema>): Tritio<Env, Schema> => {
     const path = options.path || '/docs';
 
-    // CAMBIO 2: Usar app.routes (el getter público) en vez de app.registry
     app.h3.on('GET', `${path}/json`, () => generateOpenApiSpec(app.routes));
 
     app.h3.on('GET', path, () => {
@@ -23,3 +21,4 @@ export const docs =
 
     return app;
   };
+};

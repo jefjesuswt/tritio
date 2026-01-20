@@ -1,4 +1,4 @@
-import { type TritioPlugin } from 'tritio';
+import { type Tritio } from 'tritio';
 import { handleCors, type H3Event, type CorsOptions as H3CorsOptions } from 'h3';
 
 export interface CorsOptions {
@@ -69,9 +69,8 @@ function normalizeMaxAge(val: number | string | undefined): string | undefined {
   return val.toString();
 }
 
-export const cors =
-  (options: CorsOptions = {}): TritioPlugin =>
-  (app) => {
+export const cors = (options: CorsOptions = {}) => {
+  return <Env, Schema>(app: Tritio<Env, Schema>): Tritio<Env, Schema> => {
     app.onRequest((event: H3Event) => {
       const h3Options: H3CorsOptions = {
         origin: normalizeOrigin(options.origin),
@@ -94,3 +93,4 @@ export const cors =
 
     return app;
   };
+};

@@ -40,7 +40,7 @@ export class Tritio<Env = Record<string, unknown>, Schema = {}> {
     return this.registry.getAll();
   }
 
-  public use<NewEnv = Env>(
+  public use<NewEnv>(
     plugin: (app: Tritio<Env, Schema>) => Tritio<NewEnv, Schema>
   ): Tritio<NewEnv, Schema> {
     return plugin(this);
@@ -50,7 +50,7 @@ export class Tritio<Env = Record<string, unknown>, Schema = {}> {
     fn: (ctx: GenericContext<Env>) => Derived | Promise<Derived>
   ): Tritio<Env & Derived, Schema> {
     this.lifecycle.addTransform(fn);
-    return this as unknown as Tritio<Env & Derived, Schema>;
+    return this as Tritio<Env & Derived, Schema>;
   }
 
   public decorate<const Key extends string, Value>(
@@ -61,7 +61,7 @@ export class Tritio<Env = Record<string, unknown>, Schema = {}> {
       const resolvedValue = typeof value === 'function' ? await (value as any)() : value;
       return { [key]: resolvedValue } as any;
     });
-    return this as any;
+    return this as Tritio<Env & { [K in Key]: Value }, Schema>;
   }
 
   public onBeforeHandle(fn: ContextHook<Env>) {

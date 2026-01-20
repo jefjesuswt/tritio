@@ -22,11 +22,13 @@
         "h3": "^2.0.1-rc.8",
       },
       "devDependencies": {
+        "@tritio/jwt": "workspace:*",
         "@types/node": "^20.0.0",
         "tritio": "workspace:*",
         "typescript": "^5.0.0",
       },
       "peerDependencies": {
+        "@tritio/jwt": "workspace:*",
         "tritio": "workspace:*",
       },
     },

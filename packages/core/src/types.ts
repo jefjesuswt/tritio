@@ -77,3 +77,13 @@ export type MountedAppType<Env, CurrentSchema, SubSchema, Prefix extends string>
         : never]: SubSchema[K];
   }
 >;
+
+/**
+ * @example
+ * ```ts
+ * return asPlugin<Env & MyContext, Schema>(app);
+ * ```
+ */
+export function asPlugin<NewEnv, Schema>(app: Tritio<any, Schema>): Tritio<NewEnv, Schema> {
+  return app as unknown as Tritio<NewEnv, Schema>;
+}

@@ -1,5 +1,5 @@
-import { jwtVerify, SignJWT, type JWTPayload as JosePayload } from 'jose';
-import { type Tritio } from 'tritio';
+import { SignJWT, jwtVerify, type JWTPayload as JosePayload } from 'jose';
+import { asPlugin, type Tritio } from 'tritio';
 
 export interface JwtConfig {
   secret: string;
@@ -13,20 +13,28 @@ export interface JWTPayload extends JosePayload {
   [key: string]: unknown;
 }
 
+export interface JWTHelper {
+  sign: (payload: JWTPayload) => Promise<string>;
+  verify: <T = JWTPayload>(token: string) => Promise<T | null>;
+}
+
 export const jwt = (config: JwtConfig) => {
   const secret = new TextEncoder().encode(config.secret);
-  const alg = config.algorithm || 'HS256';
 
-  const jwtHelper = {
-    sign: async (payload: JWTPayload) => {
-      const jwt = new SignJWT(payload).setProtectedHeader({ alg }).setIssuedAt();
+  const jwtHelper: JWTHelper = {
+    sign: async (payload) => {
+      const jwt = new SignJWT(payload).setProtectedHeader({
+        alg: config.algorithm || 'HS256',
+      });
 
       if (config.issuer) jwt.setIssuer(config.issuer);
       if (config.audience) jwt.setAudience(config.audience);
       if (config.expiresIn) jwt.setExpirationTime(config.expiresIn);
 
+      jwt.setIssuedAt();
       return await jwt.sign(secret);
     },
+
     verify: async <T = JWTPayload>(token: string): Promise<T | null> => {
       try {
         const { payload } = await jwtVerify(token, secret, {
@@ -40,5 +48,9 @@ export const jwt = (config: JwtConfig) => {
     },
   };
 
-  return <Env, Schema>(app: Tritio<Env, Schema>) => app.decorate('jwt', jwtHelper);
+  return <Env, Schema>(app: Tritio<Env, Schema>): Tritio<Env & { jwt: JWTHelper }, Schema> => {
+    app.decorate('jwt', jwtHelper);
+
+    return asPlugin<Env & { jwt: JWTHelper }, Schema>(app);
+  };
 };

@@ -22,13 +22,15 @@
     "build": "bun build ./src/index.ts --outdir ./dist --target bun && tsc --emitDeclarationOnly --outDir dist"
   },
   "peerDependencies": {
-    "tritio": "workspace:*"
+    "tritio": "workspace:*",
+    "@tritio/jwt": "workspace:*"
   },
   "dependencies": {
     "h3": "^2.0.1-rc.8"
   },
   "devDependencies": {
     "tritio": "workspace:*",
+    "@tritio/jwt": "workspace:*",
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
   }

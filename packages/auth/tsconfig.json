@@ -11,7 +11,8 @@
     "outDir": "./dist",
 
     "paths": {
-      "tritio": ["../core/src/index.ts"]
+      "tritio": ["../core/src/index.ts"],
+      "@tritio/jwt": ["../jwt/src/index.ts"]
     }
   },
   "include": ["src"]

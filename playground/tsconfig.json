@@ -31,7 +31,11 @@
       // "tritio": ["../packages/core/src/index.ts"],
       // "@tritio/cors": ["../packages/cors/src/index.ts"],
       // "@tritio/docs": ["../packages/docs/src/index.ts"],
-      // "@tritio/client": ["../packages/client/src/index.ts"]
+      // "@tritio/client": ["../packages/client/src/index.ts"],
+      // "@tritio/jwt": ["../packages/jwt/src/index.ts"],
+      // "@tritio/auth": ["../packages/auth/src/index.ts"],
+      // "@tritio/rate-limit": ["../packages/rate-limit/src/index.ts"],
+      // "@tritio/testing": ["../packages/testing/src/index.ts"]
     }
   }
 }
