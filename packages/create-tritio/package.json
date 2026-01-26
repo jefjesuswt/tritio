@@ -1,6 +1,6 @@
 {
   "name": "create-tritio",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Scaffolding tool for Tritio applications",
   "type": "module",
   "bin": {

@@ -1,6 +1,6 @@
 {
   "name": "@tritio/auth",
-  "version": "0.1.0",
+  "version": "0.3.1",
   "description": "Authentication middleware for Tritio",
   "type": "module",
   "main": "./dist/index.js",
