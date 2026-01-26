@@ -13,7 +13,8 @@
       "@tritio/auth",
       "@tritio/rate-limit",
       "@tritio/testing",
-      "create-tritio"
+      "create-tritio",
+      "@tritio/static"
     ]
   ],
   "access": "public",

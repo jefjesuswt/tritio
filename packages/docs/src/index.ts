@@ -1,4 +1,4 @@
-import { type Tritio } from 'tritio';
+import { type Tritio, type TritioDefs } from 'tritio';
 import { generateOpenApiSpec } from './openapi';
 import { generateScalarHtml } from './scalar';
 
@@ -9,7 +9,7 @@ export interface DocsOptions {
 }
 
 export const docs = (options: DocsOptions = {}) => {
-  return <Env, Schema>(app: Tritio<Env, Schema>): Tritio<Env, Schema> => {
+  return <Env extends TritioDefs, Schema>(app: Tritio<Env, Schema>): Tritio<Env, Schema> => {
     const path = options.path || '/docs';
 
     app.h3.on('GET', `${path}/json`, () => generateOpenApiSpec(app.routes));

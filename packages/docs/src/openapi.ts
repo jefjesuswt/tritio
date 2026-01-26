@@ -21,6 +21,15 @@ export const generateOpenApiSpec = (routes: Route[]) => {
     },
     // Tags globales (opcional, pero ayuda al orden)
     tags: [],
+    components: {
+      securitySchemes: {
+        Bearer: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
     paths: routes.reduce((acc: OpenApiPaths, route) => {
       // Convertir /users/:id a /users/{id} para OpenAPI
       const openApiPath = route.path.replace(/:(\w+)/g, '{$1}');

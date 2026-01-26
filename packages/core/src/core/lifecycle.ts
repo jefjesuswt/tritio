@@ -115,4 +115,26 @@ export class LifecycleManager<Defs extends TritioDefs> {
     // Wrap generic errors in HTTPError
     return errorHandler(new HTTPError(500, { message: error.message, cause: error }));
   }
+
+  /**
+   * Creates a shallow copy of the lifecycle manager
+   * Used for scoping apps (guards, groups) to avoid polluting the parent
+   */
+  clone(): LifecycleManager<Defs> {
+    const clone = new LifecycleManager<Defs>();
+
+    // Copy arrays (shallow copy is fine for function references)
+    clone.onRequestHooks = [...this.onRequestHooks];
+    clone.onResponseHooks = [...this.onResponseHooks];
+    clone.onErrorHooks = [...this.onErrorHooks];
+
+    clone.onTransformHooks = [...this.onTransformHooks];
+    clone.onBeforeHandleHooks = [...this.onBeforeHandleHooks];
+    clone.onAfterHandleHooks = [...this.onAfterHandleHooks];
+
+    // Copy Map
+    clone.errorHandlers = new Map(this.errorHandlers);
+
+    return clone;
+  }
 }

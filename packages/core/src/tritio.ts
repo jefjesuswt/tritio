@@ -29,6 +29,17 @@ export class Tritio<Defs extends TritioDefs = DefaultTritioDefs, Schema = {}> {
   private registry: RouteRegistry;
   private prefix: string;
 
+  // Store route handlers for guard scope merging
+  private routeHandlers: Map<
+    string,
+    {
+      method: HTTPMethod;
+      path: string;
+      schema: RouteSchema;
+      handler: (c: Context<any, Defs>) => unknown;
+    }
+  > = new Map();
+
   constructor(options: TritioOptions = {}) {
     this.prefix = options.prefix || '';
     this.lifecycle = new LifecycleManager<Defs>();
@@ -181,24 +192,31 @@ export class Tritio<Defs extends TritioDefs = DefaultTritioDefs, Schema = {}> {
     return this;
   }
 
-  private register<S extends RouteSchema, Path extends string, Method extends HTTPMethod>(
-    method: Method,
-    path: Path,
+  private register<P extends string, S extends RouteSchema>(
+    method: HTTPMethod,
+    path: P,
     schema: S,
-    handler: (ctx: Context<S, Defs>) => unknown
+    h: (c: Context<S, Defs>) => unknown
   ) {
     const fullPath = this.joinPaths(this.prefix, path);
-
     this.registry.add(method, fullPath, schema);
 
-    const h3Handler = ExecutionPipeline.build(schema, this.lifecycle, handler, method);
-    this.h3.on(method, fullPath, h3Handler);
+    // Store handler for guard scope merging
+    const routeKey = `${method}:${fullPath}`;
+    this.routeHandlers.set(routeKey, {
+      method,
+      path: fullPath,
+      schema,
+      handler: h as any,
+    });
 
+    const h3Handler = ExecutionPipeline.build(schema, this.lifecycle, h as any, method);
+    this.h3.on(method, fullPath, h3Handler);
     return this as unknown as Tritio<
       Defs,
       Schema & {
-        [K in Path]: {
-          [M in Lowercase<Method>]: {
+        [K in P]: {
+          [M in Lowercase<typeof method>]: {
             input: S['body'] extends TSchema ? Static<S['body']> : undefined;
             output: S['response'] extends TSchema ? Static<S['response']> : unknown;
           };
@@ -258,15 +276,144 @@ export class Tritio<Defs extends TritioDefs = DefaultTritioDefs, Schema = {}> {
     return this.register('OPTIONS', path, schema, h);
   }
 
+  /**
+   * Guard - Apply hooks and schema to routes in a scoped callback
+   *
+   * @overload guard(schema, callback) - Elysia-style with schema
+   * @overload guard(callback) - Elysia-style callback only
+   * @overload guard(predicate, message) - Simple predicate check
+   */
+  /* ========================================================================
+   * Guard Overloads - Explicit definitions for correct inference
+   * ======================================================================== */
+
+  /**
+   * Guard with Schema and Scope (Elysia Style)
+   * Merges guard schema into all routes defined in callback
+   */
+  public guard<NewSchema>(
+    schema: Partial<RouteSchema>,
+    callback: (app: Tritio<Defs, {}>) => Tritio<Defs, NewSchema>
+  ): Tritio<Defs, Schema & NewSchema>;
+
+  /**
+   * Guard with Scope Only (Elysia Style)
+   * Creates a scoped section without extra schema
+   */
+  public guard<NewSchema>(
+    callback: (app: Tritio<Defs, {}>) => Tritio<Defs, NewSchema>
+  ): Tritio<Defs, Schema & NewSchema>;
+
+  /**
+   * Guard with Simple Predicate (Backward Compatibility)
+   * Adds a beforeHandle hook that checks a condition
+   */
   public guard(
-    check: (ctx: GenericContext<Defs>) => boolean | Promise<boolean>,
-    message: string = 'Forbidden'
+    predicate: (ctx: Partial<GenericContext<Defs>>) => boolean | Promise<boolean>,
+    message?: string
+  ): Tritio<Defs, Schema>;
+
+  /**
+   * Guard Implementation
+   */
+  public guard(
+    arg1:
+      | Partial<RouteSchema>
+      | ((app: Tritio<Defs, any>) => Tritio<Defs, any>)
+      | ((ctx: Partial<GenericContext<Defs>>) => boolean | Promise<boolean>),
+    arg2?: ((app: Tritio<Defs, any>) => Tritio<Defs, any>) | string
+  ): Tritio<Defs, any> {
+    // Implementation handles the runtime logic for all overloads
+    // Case 1: guard(schema, callback)
+    if (typeof arg1 === 'object' && typeof arg2 === 'function') {
+      return this._guardScope(arg1 as Partial<RouteSchema>, arg2 as any);
+    }
+
+    // Case 2: guard(callback) -> Delegates to _guardScope with empty schema
+    if (typeof arg1 === 'function' && !arg2) {
+      try {
+        // Create a dummy scoped app
+        const scopedApp = new Tritio<Defs, {}>({ prefix: this.prefix });
+        scopedApp.lifecycle = this.lifecycle.clone();
+
+        // Try to execute as app callback
+        const result = (arg1 as Function)(scopedApp);
+
+        // If result is a Tritio instance, it was an app callback!
+        if (result instanceof Tritio) {
+          return this._guardScope({}, arg1 as any);
+        }
+      } catch {
+        // If execution fails with an App instance, it's likely a predicate
+        // expecting a Context. We fallback to predicate registration.
+      }
+
+      // If we are here, assume it is a predicate
+      return this._guardPredicate(arg1 as any, 'Forbidden');
+    }
+
+    // Case 3: guard(predicate, message)
+    if (typeof arg1 === 'function' && typeof arg2 === 'string') {
+      return this._guardPredicate(arg1 as any, arg2);
+    }
+
+    return this;
+  }
+
+  // Helper for Scope Logic
+  private _guardScope(
+    schema: Partial<RouteSchema>,
+    callback: (app: Tritio<Defs, {}>) => Tritio<Defs, any>
+  ): Tritio<Defs, any> {
+    const guardedApp = new Tritio<Defs, {}>({ prefix: this.prefix });
+
+    // CLONE lifecycle to isolate scope hooks from parent
+    guardedApp.lifecycle = this.lifecycle.clone();
+
+    // Apply schema defaults if needed (transforms)
+    if (schema.body) guardedApp.lifecycle.addTransform(async () => ({}));
+
+    // Execute callback
+    const result = callback(guardedApp);
+
+    // Merge routes defined in scope back to main app
+    result.routeHandlers.forEach((routeInfo) => {
+      const mergedSchema = { ...schema, ...routeInfo.schema };
+      const fullPath = routeInfo.path;
+
+      // 1. Add to registry for Documentation/Client
+      this.routeHandlers.set(fullPath, {
+        method: routeInfo.method,
+        path: fullPath,
+        schema: mergedSchema,
+        handler: routeInfo.handler,
+      });
+      this.registry.add(routeInfo.method, fullPath, mergedSchema);
+
+      // 2. Build Pipeline using SCOPED lifecycle (result.lifecycle)
+      // This ensures hooks added inside the guard (like predicates) are applied
+      const pipeline = ExecutionPipeline.build(
+        mergedSchema,
+        result.lifecycle,
+        routeInfo.handler as any,
+        routeInfo.method
+      );
+
+      // 3. Register to H3
+      this.h3.on(routeInfo.method, fullPath, pipeline);
+    });
+
+    return this;
+  }
+
+  // Helper for Predicate Logic
+  private _guardPredicate(
+    check: (ctx: Partial<GenericContext<Defs>>) => boolean | Promise<boolean>,
+    message: string
   ): Tritio<Defs, Schema> {
     return this.onBeforeHandle(async (ctx) => {
       const isValid = await check(ctx);
-      if (!isValid) {
-        throw new ForbiddenException({ message });
-      }
+      if (!isValid) throw new ForbiddenException({ message });
     }) as unknown as Tritio<Defs, Schema>;
   }
 

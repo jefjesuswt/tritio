@@ -1,0 +1,19 @@
+{
+  "name": "@tritio/static",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "h3": "^2.0.1-rc.11",
+    "mrmime": "^2.0.1",
+    "unstorage": "^1.17.4"
+  },
+  "peerDependencies": {
+    "tritio": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
