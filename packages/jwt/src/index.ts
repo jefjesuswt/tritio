@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify, type JWTPayload as JosePayload } from 'jose';
-import { asPlugin, type Tritio } from 'tritio';
+import { asPlugin, type Tritio, type TritioDefs } from 'tritio';
 
 export interface JwtConfig {
   secret: string;
@@ -48,9 +48,25 @@ export const jwt = (config: JwtConfig) => {
     },
   };
 
-  return <Env, Schema>(app: Tritio<Env, Schema>): Tritio<Env & { jwt: JWTHelper }, Schema> => {
+  return <Defs extends TritioDefs, Schema>(
+    app: Tritio<Defs, Schema>
+  ): Tritio<
+    {
+      store: Defs['store'];
+      schema: Defs['schema'];
+      decorators: Defs['decorators'] & { jwt: JWTHelper };
+    },
+    Schema
+  > => {
     app.decorate('jwt', jwtHelper);
 
-    return asPlugin<Env & { jwt: JWTHelper }, Schema>(app);
+    return asPlugin<
+      {
+        store: Defs['store'];
+        schema: Defs['schema'];
+        decorators: Defs['decorators'] & { jwt: JWTHelper };
+      },
+      Schema
+    >(app);
   };
 };

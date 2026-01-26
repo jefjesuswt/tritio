@@ -1,15 +1,15 @@
 import { EventHandlerResponse, H3Event, readBody } from 'h3';
 import { BadRequestException, HTTPMethod } from '../http';
-import { Context, RouteSchema } from '../types';
+import { Context, RouteSchema, TritioDefs } from '../types';
 import { SchemaValidator } from '../validation/compiler';
 import { ContextFactory } from './context';
 import { LifecycleManager } from './lifecycle';
 
 export class ExecutionPipeline {
-  static build<S extends RouteSchema, Env>(
+  static build<S extends RouteSchema, Defs extends TritioDefs>(
     schema: S,
-    lifecycle: LifecycleManager<Env>,
-    handler: (ctx: Context<S, Env>) => unknown,
+    lifecycle: LifecycleManager<Defs>,
+    handler: (ctx: Context<S, Defs>) => unknown,
     method: HTTPMethod
   ) {
     const validator = new SchemaValidator(schema);
@@ -29,7 +29,7 @@ export class ExecutionPipeline {
         }
       }
 
-      const ctx = ContextFactory.create<S, Env>(event, rawBody);
+      const ctx = ContextFactory.create<S, Defs>(event, rawBody);
 
       for (const hook of lifecycle.onTransformHooks) {
         const derived = await hook(ctx as any);

@@ -1,18 +1,30 @@
-import { H3Event, HTTPError as NativeH3Error } from 'h3';
-import { GlobalHook, ErrorHook, TransformHook, ContextHook } from '../types';
+import { H3Event, HTTPError as H3Error } from 'h3';
+import {
+  GlobalHook,
+  ErrorHook,
+  TransformHook,
+  ContextHook,
+  ErrorConstructor,
+  ErrorHandler,
+  TritioDefs,
+} from '../types';
 import { errorHandler, HTTPError } from '../http';
 import { logRequest } from '../logger';
+import { ContextFactory } from './context';
 
-export class LifecycleManager<Env> {
+export class LifecycleManager<Defs extends TritioDefs> {
   //global
   public onRequestHooks: GlobalHook[] = [];
   public onResponseHooks: Array<(response: any, event: H3Event) => void | Promise<void>> = [];
   public onErrorHooks: ErrorHook[] = [];
 
   //pipeline
-  public onTransformHooks: TransformHook<Env>[] = [];
-  public onBeforeHandleHooks: ContextHook<Env>[] = [];
-  public onAfterHandleHooks: ContextHook<Env>[] = [];
+  public onTransformHooks: TransformHook<Defs>[] = [];
+  public onBeforeHandleHooks: ContextHook<Defs>[] = [];
+  public onAfterHandleHooks: ContextHook<Defs>[] = [];
+
+  // Error handler registry (public for instance merging)
+  public errorHandlers: Map<ErrorConstructor<any>, ErrorHandler<any, Defs>> = new Map();
 
   addRequest(fn: GlobalHook) {
     this.onRequestHooks.push(fn);
@@ -24,14 +36,24 @@ export class LifecycleManager<Env> {
     this.onErrorHooks.push(fn);
   }
 
-  addTransform(fn: TransformHook<Env>) {
+  addTransform(fn: TransformHook<Defs>) {
     this.onTransformHooks.push(fn);
   }
-  addBeforeHandle(fn: ContextHook<Env>) {
+  addBeforeHandle(fn: ContextHook<Defs>) {
     this.onBeforeHandleHooks.push(fn);
   }
-  addAfterHandle(fn: ContextHook<Env>) {
+  addAfterHandle(fn: ContextHook<Defs>) {
     this.onAfterHandleHooks.push(fn);
+  }
+
+  /**
+   * Registers a custom error handler for a specific error type
+   */
+  public addErrorHandler<T extends Error>(
+    errorType: ErrorConstructor<T>,
+    handler: ErrorHandler<T, Defs>
+  ) {
+    this.errorHandlers.set(errorType, handler);
   }
 
   async runOnRequest(event: H3Event) {
@@ -50,8 +72,47 @@ export class LifecycleManager<Env> {
     for (const hook of this.onResponseHooks) await hook(response, event);
   }
 
-  async runOnError(error: HTTPError | NativeH3Error, event: H3Event) {
+  async runOnError(error: HTTPError | H3Error | Error, event: H3Event) {
+    // 1. Check for registered custom error handlers
+    for (const [ErrorClass, handler] of this.errorHandlers) {
+      // Check if the error itself matches
+      const isMatch = error instanceof ErrorClass;
+      // Also check if the error.cause matches (H3 might wrap our custom errors)
+      const isCauseMatch = (error as any).cause instanceof ErrorClass;
+
+      if (isMatch || isCauseMatch) {
+        // Use the original error (from cause) if it matches, otherwise use the error itself
+        const originalError = isCauseMatch ? (error as any).cause : error;
+
+        // Create generic context for the handler
+        const ctx = ContextFactory.createErrorContext<Defs>(event);
+        const result = await handler(originalError, ctx);
+
+        // If handler returns a Response, use it directly
+        if (result instanceof Response) {
+          return result;
+        }
+
+        // If handler returns data, wrap in Response
+        if (result !== undefined && result !== null) {
+          return new Response(JSON.stringify(result), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
+    // 2. Run existing error hooks
     for (const hook of this.onErrorHooks) await hook(event, error);
-    return errorHandler(error);
+
+    // 3. Default error handler
+    // If error is already HTTPError or H3Error, pass it directly
+    // Otherwise wrap generic Error in HTTPError
+    if (error instanceof HTTPError || error instanceof H3Error) {
+      return errorHandler(error);
+    }
+
+    // Wrap generic errors in HTTPError
+    return errorHandler(new HTTPError(500, { message: error.message, cause: error }));
   }
 }

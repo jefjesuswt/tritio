@@ -10,12 +10,19 @@
     "build": "bun build ./src/index.ts --outdir ./dist --target bun"
   },
   "dependencies": {
-    "tritio": "workspace:*",
+    "@libsql/client": "^0.17.0",
+    "@tritio/auth": "workspace:*",
     "@tritio/client": "workspace:*",
     "@tritio/cors": "workspace:*",
     "@tritio/docs": "workspace:*",
-    "@tritio/rate-limit": "workspace:*",
     "@tritio/jwt": "workspace:*",
-    "@tritio/auth": "workspace:*"
+    "@tritio/static": "workspace:*",
+    "@tritio/rate-limit": "workspace:*",
+    "drizzle-orm": "^0.45.1",
+    "drizzle-typebox": "^0.3.3",
+    "tritio": "workspace:*"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.8"
   }
 }

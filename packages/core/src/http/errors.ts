@@ -228,7 +228,9 @@ export const errorHandler = (error: H3Error | HTTPError) => {
     );
   }
 
-  console.error(error);
+  // For 500 errors, you can log to your logger here if needed
+  // console.error('[500 Error]', error.message);
+
   return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
     status: 500,
     headers: { 'Content-Type': 'application/json' },

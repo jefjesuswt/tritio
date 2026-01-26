@@ -10,7 +10,12 @@ export interface AuthConfig {
   optional?: boolean;
 }
 
-type EnvWithJWT = { jwt: JWTHelper };
+// Type constraint for apps that have JWT plugin installed
+type DefsWithJWT = {
+  decorators: { jwt: JWTHelper };
+  store: Record<string, any>;
+  schema: Record<string, any>;
+};
 
 type AuthUserContext<TUser> = {
   user: TUser;
@@ -18,9 +23,16 @@ type AuthUserContext<TUser> = {
 };
 
 export const auth = <TUser = any>(config: AuthConfig = {}) => {
-  return <Env extends EnvWithJWT, Schema>(
-    app: Tritio<Env, Schema>
-  ): Tritio<Env & AuthUserContext<TUser>, Schema> => {
+  return <Defs extends DefsWithJWT, Schema>(
+    app: Tritio<Defs, Schema>
+  ): Tritio<
+    {
+      decorators: Defs['decorators'];
+      schema: Defs['schema'];
+      store: Defs['store'] & AuthUserContext<TUser>;
+    },
+    Schema
+  > => {
     const headerName = (config.header || 'authorization').toLowerCase();
     const scheme = config.scheme || 'Bearer';
     const exclude = config.exclude || [];
@@ -76,7 +88,14 @@ export const auth = <TUser = any>(config: AuthConfig = {}) => {
       };
     });
 
-    return asPlugin<Env & AuthUserContext<TUser>, Schema>(app);
+    return asPlugin<
+      {
+        decorators: Defs['decorators'];
+        schema: Defs['schema'];
+        store: Defs['store'] & AuthUserContext<TUser>;
+      },
+      Schema
+    >(app);
   };
 };
 

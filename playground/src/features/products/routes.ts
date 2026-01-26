@@ -5,7 +5,6 @@ import type { User } from '../../types';
 
 const JWT_SECRET = 'tu-secreto-super-seguro-cambiar-en-produccion';
 
-// Crear app de products con JWT y Auth
 export const productsApp = new Tritio()
   .use(
     jwt({
@@ -20,7 +19,6 @@ export const productsApp = new Tritio()
     })
   );
 
-// Ruta pública - Listar productos
 productsApp.get(
   '/public',
   {
@@ -49,7 +47,6 @@ productsApp.get(
   })
 );
 
-// Ruta protegida - Crear producto
 productsApp.post(
   '/',
   {
@@ -73,19 +70,15 @@ productsApp.post(
     }),
   },
   (ctx) => {
-    // ✅ ctx.user está tipado como User
-    // ✅ ctx.jwt está tipado como JWTHelper
     return {
       id: Math.random().toString(36).substring(7),
       name: ctx.body.name,
       price: ctx.body.price,
       stock: ctx.body.stock,
-      createdBy: ctx.user.email, // ✅ ctx.user.email es string
+      createdBy: ctx.user.email,
     };
   }
 );
-
-// Ruta protegida - Actualizar producto
 productsApp.put(
   '/:id',
   {
@@ -110,16 +103,14 @@ productsApp.put(
     }),
   },
   (ctx) => {
-    // ✅ ctx.user está completamente tipado
     return {
       id: ctx.params.id,
       message: 'Producto actualizado exitosamente',
-      updatedBy: ctx.user.email, // ✅ Tipo correcto
+      updatedBy: ctx.user.email,
     };
   }
 );
 
-// Ruta protegida - Eliminar producto
 productsApp.delete(
   '/:id',
   {
@@ -141,12 +132,10 @@ productsApp.delete(
     }),
   },
   (ctx) => {
-    // ✅ Acceso completo a propiedades de user
     return {
       message: `Producto ${ctx.params.id} eliminado`,
       deletedBy: {
-        email: ctx.user.email, // ✅ Tipado
-        role: ctx.user.role, // ✅ Tipado
+        email: ctx.user.email,
       },
     };
   }
