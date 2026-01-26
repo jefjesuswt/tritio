@@ -1,4 +1,4 @@
-import { type Tritio } from 'tritio';
+import { type Tritio, type TritioDefs } from 'tritio';
 import { getRequestIP, type H3Event } from 'h3';
 import { TooManyRequestsException } from 'tritio';
 
@@ -132,8 +132,7 @@ export const rateLimit = (options: RateLimitOptions = {}) => {
 
   const store = options.store ?? new MemoryStore(windowMs);
 
-  // CRITICAL: Tipo de retorno explícito (sin cambios en Env)
-  return <Env, Schema>(app: Tritio<Env, Schema>): Tritio<Env, Schema> => {
+  return <Defs extends TritioDefs, Schema>(app: Tritio<Defs, Schema>): Tritio<Defs, Schema> => {
     const requestKeys = new WeakMap<H3Event, string>();
 
     app.onRequest(async (event: H3Event) => {

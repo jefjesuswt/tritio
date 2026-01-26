@@ -29,16 +29,16 @@ bun add tritio
 Create a simple server in `src/index.ts`:
 
 ```typescript
-import { Tritio, t } from "tritio";
+import { Tritio, t } from 'tritio';
 
 const app = new Tritio();
 
 app.get(
-  "/",
+  '/',
   {
     response: t.String(),
   },
-  () => "Hello from Tritio"
+  () => 'Hello from Tritio'
 );
 
 app.listen(3000);
@@ -57,12 +57,12 @@ bun run src/index.ts
 Tritio infers TypeScript types directly from your validation schemas. You define the schema, and `ctx.body`, `ctx.query`, and your return types are strongly typed.
 
 ```typescript
-import { Tritio, t } from "tritio";
+import { Tritio, t } from 'tritio';
 
 const app = new Tritio();
 
 app.post(
-  "/users",
+  '/users',
   {
     body: t.Object({
       name: t.String(),
@@ -94,11 +94,11 @@ Tritio shines in complex applications. You can group routes or mount entirely se
 Organize related routes under a common prefix.
 
 ```typescript
-app.group("/api/v1", (api) => {
-  api.get("/status", {}, () => ({ status: "ok" }));
+app.group('/api/v1', (api) => {
+  api.get('/status', {}, () => ({ status: 'ok' }));
 
-  api.group("/users", (users) => {
-    users.get("/", {}, () => ["Alice", "Bob"]);
+  api.group('/users', (users) => {
+    users.get('/', {}, () => ['Alice', 'Bob']);
   });
 });
 ```
@@ -110,16 +110,16 @@ For larger systems, separate your domains into independent Tritio instances and 
 ```typescript
 // auth.module.ts
 const authApp = new Tritio();
-authApp.post("/login", {}, () => "Login logic");
+authApp.post('/login', {}, () => 'Login logic');
 
 // billing.module.ts
 const billingApp = new Tritio();
-billingApp.get("/invoices", {}, () => ["Inv-001", "Inv-002"]);
+billingApp.get('/invoices', {}, () => ['Inv-001', 'Inv-002']);
 
 // main.ts
 const app = new Tritio();
-app.mount("/auth", authApp); // Accessible at /auth/login
-app.mount("/billing", billingApp); // Accessible at /billing/invoices
+app.mount('/auth', authApp); // Accessible at /auth/login
+app.mount('/billing', billingApp); // Accessible at /billing/invoices
 ```
 
 ### Auto-Documentation
@@ -140,6 +140,71 @@ app.listen(3000);
 ```
 
 Visit `http://localhost:3000/docs` to explore and test your API.
+
+### Creating Custom Plugins
+
+Tritio plugins are functions that take an app instance and return it (potentially with modified types).
+
+#### 1. Simple Plugin (No Context Changes)
+
+For plugins that attach global middleware or routes but don't modify the `ctx` object.
+
+```typescript
+import { Tritio, TritioDefs } from 'tritio';
+
+export const myLoggerPlugin = () => {
+  // Generics ensure type preservation
+  return <Defs extends TritioDefs, Schema>(app: Tritio<Defs, Schema>): Tritio<Defs, Schema> => {
+    app.onRequest(async (event) => {
+      console.log(`[Request] ${event.path}`);
+    });
+
+    return app;
+  };
+};
+
+// Usage
+app.use(myLoggerPlugin());
+```
+
+#### 2. Context Plugin (Extending `ctx`)
+
+For plugins that add properties to the request context (e.g. `ctx.user`).
+
+```typescript
+import { Tritio, TritioDefs, asPlugin } from 'tritio';
+
+type MyContext = {
+  timestamp: number;
+};
+
+export const timestampPlugin = () => {
+  return <Defs extends TritioDefs, Schema>(
+    app: Tritio<Defs, Schema>
+  ): Tritio<
+    // Merge new context into the 'store' property of Defs
+    {
+      decorators: Defs['decorators'];
+      store: Defs['store'] & MyContext;
+      schema: Defs['schema'];
+    },
+    Schema
+  > => {
+    app.onRequest(async (event) => {
+      // Attach value to context
+      event.context.timestamp = Date.now();
+    });
+
+    // Use 'asPlugin' helper to cast the app to the new type safely
+    return asPlugin(app);
+  };
+};
+
+// Usage
+app.use(timestampPlugin()).get('/', {}, (ctx) => {
+  return { time: ctx.timestamp }; // Typed!
+});
+```
 
 ## License
 
