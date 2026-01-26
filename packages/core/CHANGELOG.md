@@ -1,5 +1,21 @@
 # tritio
 
+## 1.0.0
+
+### Patch Changes
+
+- eff74d6: # Rate Limit Fix & Docs
+  - fix(rate-limit): Resolved `TritioDefs` type constraint error in build.
+  - docs(core): Added "Creating Custom Plugins" section to README.
+
+- 5ae450d: # New Static Plugin
+  - feat(static): Initial release of `@tritio/static` plugin.
+    - Supports `root`, `prefix`, and `spa` options.
+    - Cross-runtime compatibility with `unstorage`.
+
+  # Core Updates
+  - fix(core): Internal adjustments for plugin compatibility.
+
 ## 0.3.0
 
 ### Minor Changes
